@@ -4,6 +4,7 @@ from database import SessionLocal
 from models import Todos
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -16,6 +17,7 @@ def get_db():
 
 # Dependency Injection
 db_dependency = Annotated[Session, Depends(get_db)]
+user_dependency = Annotated[dict, Depends(get_current_user)]
 
 # DTO
 class TodoRequest(BaseModel):
@@ -37,8 +39,10 @@ async def get_one(db: db_dependency, id: int = Path(gt=0)):
     raise HTTPException(status_code=404, detail='Todo not Found')
 
 @router.post('/todo', status_code=status.HTTP_201_CREATED)
-async def create(db: db_dependency, req: TodoRequest):
-    todo_model = Todos(**req.model_dump())
+async def create(user: user_dependency, db: db_dependency, req: TodoRequest):
+    if user is None:
+        raise HTTPException(status_code=401, detail='Authentication Failed')
+    todo_model = Todos(**req.model_dump(), owner_id=user.get('id'))
 
     db.add(todo_model)
     db.commit()
