@@ -1,7 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from models import Users
 from passlib.context import CryptContext
+from annotated_types import Annotated
+from sqlalchemy.orm import Session
+from database import SessionLocal
 
 router = APIRouter()
 
@@ -16,8 +19,17 @@ class CreateUserRequest(BaseModel):
     password: str
     role: str
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+db_dependency = Annotated[Session, Depends(get_db)]
+
 @router.post('/auth/')
-async def create_user(dto: CreateUserRequest):
+async def create_user(db: db_dependency, dto: CreateUserRequest):
     user_model = Users(
         email = dto.email,
         username = dto.username,
@@ -27,4 +39,7 @@ async def create_user(dto: CreateUserRequest):
         role = dto.role,
         is_active=True
     )
-    return user_model
+    
+    db.add(user_model)
+    db.commit()
+    
