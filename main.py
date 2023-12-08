@@ -45,3 +45,17 @@ async def create(db: db_dependency, req: TodoRequest):
 
     db.add(todo_model)
     db.commit()
+
+@app.put('/todo/{id}', status_code=status.HTTP_204_NO_CONTENT)
+async def update(db: db_dependency, req: TodoRequest, id: int = Path(gt=0)):
+    todo_model = db.query(Todos).filter(Todos.id == id).first()
+    if todo_model is None:
+        raise HTTPException(status_code=404, detail='Not found')
+    
+    todo_model.title = req.title
+    todo_model.description = req.description
+    todo_model.priority = req.priority
+    todo_model.complete = req.complete
+
+    db.add(todo_model)
+    db.commit()
